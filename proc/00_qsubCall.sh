@@ -35,12 +35,12 @@ while IFS=, read -r sub ses; do
     logs="${logdir}/${sub}_${ses}"
     echo "[QUEUE] ${sub} ${ses}"
     
-    #echo "$script" "$clean_sub" "$clean_ses"
+    #"$script" "$clean_sub" "$clean_ses"
     qsub -q mica.q -pe smp 10 -l h_vmem=6G \
         -N "${sub#sub-}_${ses}" \
-        -e "${logs}.e" \
-        -o "${logs}.txt" \
-        /bin/bash "$script" "$clean_sub" "$clean_ses"
+        -e "${logs}.o" \
+        -o "${logs}.o" \
+        "$script" "$clean_sub" "$clean_ses"
 
     # testing
     if [ "$test" -eq 1 ]; then
