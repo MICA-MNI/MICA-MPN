@@ -19,7 +19,7 @@ ses="${2:?missing ses}"
 sub="${sub#sub-}"
 ses="${ses#ses-}"
 id_prefix="sub-${sub}_ses-${ses}"
-id_folders=sub-${sub}/ses-${ses}/
+id_folders="sub-${sub}/ses-${ses}"
 
 root="${3:-/host/verges/tank/data/BIDS_MPN}"
 
@@ -154,9 +154,9 @@ if [ -f "$mp_proc_csv" ]; then
 fi
 
 echo "[STEP] NLM denoising"
-Nifti=${mp_sub_dir}/${id_folders}/anat/${id_prefix/\//_}_space-nativepro_T1w.nii.gz
+Nifti=${mp_sub_dir}/anat/${id_prefix/\//_}_space-nativepro_T1w.nii.gz
 outStr=${id_prefix/\//_}_space-nativepro_T1w_nlm
-outdir=${mp_sub_dir}/${id_folders}/anat/
+outdir=${mp_sub_dir}/anat/
 
 if [ ! -f "$Nifti" ]; then
     echo "[ERROR] T1w nativepro file not found at expected path: $Nifti"
