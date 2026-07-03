@@ -35,7 +35,7 @@ while IFS=, read -r sub ses; do
     logs="${logdir}/${sub}_${ses}"
     echo "[QUEUE] ${sub} ${ses}"
     
-    #"$script" "$clean_sub" "$clean_ses"
+    echo "$script" "$clean_sub" "$clean_ses"
     qsub -q mica.q -pe smp 10 -l h_vmem=6G \
         -N "${sub#sub-}_${ses}" \
         -e "${logs}.o" \

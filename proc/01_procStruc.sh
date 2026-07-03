@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # ==============================================================
 # Process a participant up until anatomical segmentation.
@@ -9,9 +9,9 @@
 # MICA Lab, MNI, McGill University
 #
 # usage:
-# bash 00_PreScrubber.sh "$sub" "$ses" "$root" "$T1wStr" "$micapipe_img"
+# bash 01_procStruc.sh "$sub" "$ses" "$root" "$T1wStr"
 # ==============================================================
-
+set -e
 sub="${1:?missing sub}"
 ses="${2:?missing ses}"
 
@@ -55,17 +55,7 @@ echo "[INFO] mp_proc_csv=$mp_proc_csv"
 echo
 echo "[STEP] MICAPIPE: proc_structural"
 # Do not reprocess is module already completed
-if [ -f "$mp_proc_csv" ]; then
-    # Look for sub,ses,mp_string,COMPLETE
-    if awk -F',' -v s="$sub" -v se="$ses" -v m="$mp_string" '
-        NR==1 { next }  # skip header
-        $1==s && $2==se && $3==m && toupper($4)=="COMPLETE" { found=1; exit }
-        END { exit !found }
-    ' "$mp_proc_csv"; then
-        echo "[INFO] ${id_prefix} @ ${mp_string} already COMPLETE. Skipping procStructural processing."
-        exit 0
-    fi
-fi
+echo "[INFO] ${id_prefix} @ ${mp_string} not COMPLETE. Proceeding with procStructural processing."
 
 uni_flag=()
 
@@ -75,16 +65,16 @@ have_match() {
 
 # MP2RAGE 0.5 mm
 if have_match "${anat_dir}/${id_prefix}_acq-05mm_UNIT1.nii*" &&
-   have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-1_MP2RAGE.nii*" &&
-   have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-2_MP2RAGE.nii*"; then
+    have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-1_MP2RAGE.nii*" &&
+    have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-2_MP2RAGE.nii*"; then
 
     T1wStr="acq-05mm_UNIT1,acq-05mm_inv-1_MP2RAGE,acq-05mm_inv-2_MP2RAGE"
     uni_flag=(-uni)
     t1_mode="MP2RAGE_05mm"
 # multiple runs of 0.5mm: use run-2
 elif have_match "${anat_dir}/${id_prefix}_acq-05mm_run-2_UNIT1.nii*" &&
-     have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-1_run-2_MP2RAGE.nii*" &&
-     have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-2_run-2_MP2RAGE.nii*"; then
+    have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-1_run-2_MP2RAGE.nii*" &&
+    have_match "${anat_dir}/${id_prefix}_acq-05mm_inv-2_run-2_MP2RAGE.nii*"; then
 
     T1wStr="acq-05mm_run-2_UNIT1,acq-05mm_inv-1_run-2_MP2RAGE,acq-05mm_inv-2_run-2_MP2RAGE"
     uni_flag=(-uni)
@@ -119,52 +109,57 @@ echo "[INFO] t1_mode=$t1_mode"
 echo "[INFO] T1wStr=$T1wStr"
 
 singularity_cmd=(
-  singularity run --writable-tmpfs --containall
-  -B "${bids}:/bids"
-  -B "${out}:/out"
-  -B "${tmpDir}:/tmp"
-  -B "${fs_lic}:/opt/licence.txt"
-  "${micapipe_img}"
-  -bids /bids
-  -out /out
-  -fs_licence /opt/licence.txt
-  -threads "${threads}"
-  -sub "${sub}"
-  -ses "${ses}"
-  -proc_structural
-  "${uni_flag[@]}"
-  -T1wStr "${T1wStr}"
+    singularity run --writable-tmpfs --containall
+    -B "${bids}:/bids"
+    -B "${out}:/out"
+    -B "${tmpDir}:/tmp"
+    -B "${fs_lic}:/opt/licence.txt"
+    "${micapipe_img}"
+    -bids /bids
+    -out /out
+    -fs_licence /opt/licence.txt
+    -threads "${threads}"
+    -sub "${sub}"
+    -ses "${ses}"
+    -proc_structural
+    "${uni_flag[@]}"
+    -T1wStr "${T1wStr}"
 )
 
 echo "[INFO] Running command:" "${singularity_cmd[@]}"
 "${singularity_cmd[@]}"
 
-##### SURFACE FITTING #####
-mp_string="proc_surf-fastsurfer"
-echo "[STEP] Check for already completed ${mp_string}"
-if [ -f "$mp_proc_csv" ]; then
-    if awk -F',' -v s="$sub" -v se="$ses" -v m="$mp_string" '
-        NR==1 { next }  # skip header
-        $1==s && $2==se && $3==m && toupper($4)=="COMPLETE" { found=1; exit }
-        END { exit !found }
-    ' "$mp_proc_csv"; then
-        echo "[INFO] ${id_prefix} @ ${mp_string} already COMPLETE. Skipping ${mp_string} processing."
-        exit 0
-    fi
-fi
 
+##### SURFACE FITTING #####
 echo "[STEP] NLM denoising"
+
+export FREESURFER_HOME=/data/mica1/01_programs/Freesurfer-6.0
+source ${FREESURFER_HOME}/SetUpFreeSurfer.sh
+source /opt/minc/1.9.18/minc-toolkit-config.sh
+
 Nifti=${mp_sub_dir}/anat/${id_prefix/\//_}_space-nativepro_T1w.nii.gz
 outStr=${id_prefix/\//_}_space-nativepro_T1w_nlm
-outdir=${mp_sub_dir}/anat/
+outdir=${mp_sub_dir}/anat
+nlm=${outdir}/${outStr}.nii.gz
 
 if [ ! -f "$Nifti" ]; then
     echo "[ERROR] T1w nativepro file not found at expected path: $Nifti"
     exit 1
 fi
-cmd="bash /data/mica1/01_programs/MICA-7t/functions/denoiseNLM $Nifti $outStr $outdir"
-echo "[INFO] Running command: $cmd"
-eval "$cmd"
+
+__conda_setup="$('/host/verges/tank/data/daniel/software/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/host/verges/tank/data/daniel/software/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/host/verges/tank/data/daniel/software/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/host/verges/tank/data/daniel/software/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+conda activate /host/verges/tank/data/daniel/software/miniconda3/envs/MICA-MPN
+python /host/verges/tank/data/daniel/99_varia/MPN/processing/proc/nlm.py $Nifti $nlm
 
 
 echo "[STEP] proc_surf"
@@ -177,21 +172,21 @@ fi
 
 # call singularity
 surf_cmd=(
-  singularity run --writable-tmpfs --containall
-  -B "${bids}:/bids"
-  -B "${out}:/out"
-  -B "${tmpDir}:/tmp"
-  -B "${fs_lic}:/opt/licence.txt"
-  -B "${t1nlm}:/opt/T1.nii.gz"
-  "${micapipe_img}"
-  -bids /bids
-  -out /out
-  -fs_licence /opt/licence.txt
-  -threads 6
-  -sub "${sub}"
-  -ses "${ses}"
-  -proc_surf
-  -T1 /opt/T1.nii.gz
+    singularity run --writable-tmpfs --containall
+    -B "${bids}:/bids"
+    -B "${out}:/out"
+    -B "${tmpDir}:/tmp"
+    -B "${fs_lic}:/opt/licence.txt"
+    -B "${t1nlm}:/opt/T1.nii.gz"
+    "${micapipe_img}"
+    -bids /bids
+    -out /out
+    -fs_licence /opt/licence.txt
+    -threads 6
+    -sub "${sub}"
+    -ses "${ses}"
+    -proc_surf
+    -T1 /opt/T1.nii.gz
 )
 
 echo "[INFO] Running command:" "${surf_cmd[@]}"
