@@ -128,3 +128,4 @@ singularity_cmd=(
 
 echo "[INFO] Running command:" "${singularity_cmd[@]}"
 "${singularity_cmd[@]}"
+echo "[DONE] Finished proc_structural script " "$(date)"
