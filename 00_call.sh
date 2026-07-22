@@ -7,14 +7,16 @@
 # logdir="/host/verges/tank/data/daniel/99_varia/MPN_proc/logs"
 
 # usage:
-# bash 00_qsubCall.sh [--local] [--test] [--batch-size N] [--hostname XYZ] \
+# bash 00_call.sh [--local] [--test] [--batch-size N] [--hostname XYZ] [--vmem <vmem>] [--threads <threads>]\
 #   $rawdata $list_file $script $logdir
 
 set -euo pipefail
 
 local=0
 test=0
+threads=10
 batch_size=10
+vmem=6G
 hostname=NA
 
 rawdata=
@@ -84,6 +86,14 @@ while [ $# -gt 0 ]; do
             batch_size="${2:?missing batch size}"
             shift 2
             ;;
+        --threads|-t)
+            threads="${2:?missing threads}"
+            shift 2
+            ;;
+        --vmem)
+            vmem="${2:?missing vmem}"
+            shift 2
+            ;;
         *)
             if [ -z "$rawdata" ]; then
                 rawdata="$1"
@@ -125,7 +135,7 @@ while IFS=, read -r sub ses; do
 
     clean_sub="${sub#sub-}"
     clean_ses="${ses#ses-}"
-    logs="${logdir}/${sub}_${ses}"
+    logs="${logdir}/sub-${sub}_ses-${ses}"
     logs_pth="${logs}.o"
     
     echo "==============================================================="
@@ -142,7 +152,7 @@ while IFS=, read -r sub ses; do
 
         if [ "$hostname" != "NA" ]; then
             job_id=$(
-                qsub -terse -l hostname="${hostname}" -pe smp 10 -l h_vmem=6G \
+                qsub -terse -l hostname="${hostname}" -pe smp "${threads}" -l h_vmem="${vmem}" \
                     -N "${sub#sub-}_${ses}" \
                     -e "${logs_pth}" \
                     -o "${logs_pth}" \
@@ -151,7 +161,7 @@ while IFS=, read -r sub ses; do
             echo "[INFO] qsub job ${job_id} submitted to ${hostname}"
         else
             job_id=$(
-                qsub -terse -q mica.q -pe smp 10 -l h_vmem=6G \
+                qsub -terse -q mica.q -pe smp "${threads}" -l h_vmem="${vmem}" \
                     -N "${sub#sub-}_${ses}" \
                     -e "${logs_pth}" \
                     -o "${logs_pth}" \
@@ -177,5 +187,5 @@ done < "$list_file"
 if [ "$local" -eq 0 ]; then
     echo "[INFO] all jobs submitted; waiting for remaining batch to finish"
     wait_for_all_jobs
-    echo "[INFO] all submitted jobs have exited qstat"
+    echo "[INFO] $(date) all submitted jobs have exited qstat"
 fi

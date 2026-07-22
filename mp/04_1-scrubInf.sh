@@ -23,7 +23,6 @@ micapipe7t
 # dir_imgTs
 # dir_inf
 
-
 echo "[INFO] date=$(date)"
 echo "[INFO] hostname=$(hostname)"
 echo "[INFO] user=$(whoami)"
