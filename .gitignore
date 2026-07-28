@@ -12,3 +12,6 @@ logs/
 log/
 
 demo/
+
+hu/hu_call*.txt
+hu/checkHu.sh

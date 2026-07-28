@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+# NOTE: most reliable when running locally
+
 # E N V  setup
 source /host/verges/tank/data/daniel/99_varia/MPN_proc/processing/mp/00_setupEnv.sh
 micapipe7t
@@ -22,7 +24,7 @@ bids=$bids_dir/rawdata
 out=$bids_dir/derivatives
 
 dir_fs="${out}/fastsurfer"
-threads=${threads:-15}
+threads=${threads:-10}
 tmpDir=${tmpDir:-"/tmp"}
 
 echo
@@ -53,7 +55,10 @@ else
 fi
 
 # --- p o s t    s t r u c t u r a l ---
-echo "[STEP] micapipe:post_structural ${sub}-${ses}"
+echo "[STEP] micapipe:post_structural, MPC, proc_flair,  ${sub}-${ses}"
+
+t1map_path="${bids}/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm_T1map.nii.gz"
+echo "[INFO] t1map_path=$t1map_path"
 
 post_struct_cmd=(
     singularity run --writable-tmpfs --containall
@@ -68,34 +73,15 @@ post_struct_cmd=(
     -threads "${threads}"
     -sub "${sub}"
     -ses "${ses}"
-    -post_structural
+    -post_structural 
+    -MPC -mpc_acq T1map -regSynth
+    -microstructural_img /bids/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm_T1map.nii.gz 
+    -microstructural_reg FALSE
+    -proc_flair
 )
 
 echo "[INFO] Running command:" "${post_struct_cmd[@]}"
 "${post_struct_cmd[@]}"
 echo "[DONE] micapipe:post_structural."
-
-# --- m i c a p i p e cleanup ---
-echo "[STEP] micapipe-cleaning ${sub}-${ses}"
-
-cleanup_cmd=(
-    singularity run --writable-tmpfs --containall
-	-B "${bids}:/bids"
-    -B "${out}:/out"
-    -B "${tmpDir}:/tmp"
-    -B "${fs_licence}:/opt/licence.txt"
-    "${micapipe_img}"
-    -cleanup
-    -out /out
-    -fs_licence /opt/licence.txt
-    -bids /bids
-    -sub "${sub}"
-    -ses "${ses}"
-    -post_structural
-)
-
-echo "[INFO] Running command:" "${cleanup_cmd[@]}"
-"${cleanup_cmd[@]}"
-echo "[DONE] micapipe-cleaning ${sub}-${ses}"
 
 echo "[INFO] Post-scrubber script complete $(date)"

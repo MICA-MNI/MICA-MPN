@@ -13,7 +13,6 @@ bids_dir=${3:-/host/verges/tank/data/BIDS_MPN}
 hu_img=${hu_img:-/data/mica1/01_programs/singularity/hippunfold_v1.5.1.sif}
 modality=T1w
 
-threads=${threads:-10}
 out_density=${out_density:-0p5mm}
 
 out_dir=${bids_dir}/derivatives/hippunfold_v1.5.1
@@ -25,9 +24,8 @@ echo "[INFO] sub=$sub"
 echo "[INFO] hu_img=$hu_img"
 echo "[INFO] bids_dir=$bids_dir"
 echo "[INFO] out_dir=$out_dir"
-echo "[INFO] threads=$threads"
 
-echo "[STEP] Running hippunfold for ${sub} with ${threads} threads"
+echo "[STEP] Running hippunfold for ${sub}"
 hu_cmd=(
   singularity run -e "${hu_img}" \
   "${bids_dir}" "${out_dir}" participant \

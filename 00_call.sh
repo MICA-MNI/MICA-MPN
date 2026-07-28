@@ -10,7 +10,7 @@
 # bash 00_call.sh [--local] [--test] [--batch-size N] [--hostname XYZ] [--vmem <vmem>] [--threads <threads>]\
 #   $rawdata $list_file $script $logdir
 
-set -euo pipefail
+set -e
 
 local=0
 test=0
@@ -43,8 +43,8 @@ wait_for_open_slot() {
             break
         fi
 
-        echo "[INFO] batch full (${#submitted_job_ids[@]}/${batch_size}); waiting 5mins..."
-        sleep 300
+        echo "[INFO] batch full (${#submitted_job_ids[@]}/${batch_size}); waiting 90secs..."
+        sleep 90
     done
 }
 
@@ -143,7 +143,7 @@ while IFS=, read -r sub ses; do
 
     if [ "$local" -eq 1 ]; then
         echo "[INFO] running locally: '$script' '$clean_sub' '$clean_ses'"
-        "$script" "$clean_sub" "$clean_ses" >> "${logs_pth}" 2>&1
+        "$script" "$clean_sub" "$clean_ses" >> "${logs_pth}" 2>&1 || true
         continue
     else
         wait_for_open_slot
