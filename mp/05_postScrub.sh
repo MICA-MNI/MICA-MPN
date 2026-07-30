@@ -73,9 +73,9 @@ post_struct_cmd=(
     -threads "${threads}"
     -sub "${sub}"
     -ses "${ses}"
-    -post_structural 
+    -post_structural
     -MPC -mpc_acq T1map -regSynth
-    -microstructural_img /bids/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm_T1map.nii.gz 
+    -microstructural_img /bids/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm_T1map.nii.gz
     -microstructural_reg FALSE
     -proc_flair
 )
