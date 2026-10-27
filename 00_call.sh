@@ -7,7 +7,8 @@
 # logdir="/host/verges/tank/data/daniel/99_varia/MPN_proc/logs"
 
 # usage:
-# bash 00_call.sh [--local] [--test] [--batch-size N] [--hostname XYZ] [--vmem <vmem>] [--threads <threads>]\
+# bash 00_call.sh [--local] [--test] [--batch-size N] [--hostname XYZ] [--vmem <vmem>] [--threads <threads>] \
+#   --t1-resolution 0.5|0.7 \
 #   $rawdata $list_file $script $logdir
 
 set -e
@@ -23,6 +24,8 @@ rawdata=
 list_file=
 script=
 logdir=
+t1_resolution=
+script_args=()
 
 submitted_job_ids=()
 
@@ -94,6 +97,11 @@ while [ $# -gt 0 ]; do
             vmem="${2:?missing vmem}"
             shift 2
             ;;
+        --)
+            shift
+            script_args=("$@")
+            break
+            ;;
         *)
             if [ -z "$rawdata" ]; then
                 rawdata="$1"
@@ -111,6 +119,32 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+# Validate inputs
+case "${t1_resolution}" in
+    0.5|0.7)
+        ;;
+    *)
+        echo "[ERROR] --t1-resolution must be 0.5 or 0.7." >&2
+        exit 1
+        ;;
+esac
+
+: "${rawdata:?missing rawdata directory}"
+: "${list_file:?missing participant-session list}"
+: "${script:?missing processing script}"
+: "${logdir:?missing log directory}"
+
+rawdata="${rawdata%/}"
+
+if [[ "${rawdata##*/}" != "rawdata" ]]; then
+    echo "[ERROR] Expected rawdata path to end in /rawdata, got: ${rawdata}" >&2
+    exit 1
+fi
+
+root="$(dirname -- "$rawdata")"
+
+root="$(cd "$root" && pwd)"
 
 if ! [[ "$batch_size" =~ ^[1-9][0-9]*$ ]]; then
     echo "[ERROR] batch_size must be a positive integer, got: $batch_size" >&2
@@ -142,8 +176,8 @@ while IFS=, read -r sub ses; do
     echo "[INFO] ${sub} ${ses}"
 
     if [ "$local" -eq 1 ]; then
-        echo "[INFO] running locally: '$script' '$clean_sub' '$clean_ses'"
-        "$script" "$clean_sub" "$clean_ses" >> "${logs_pth}" 2>&1 || true
+        echo "[INFO] running locally: '$script' '$clean_sub' '$clean_ses' '${script_args[@]}'
+        "$script" "$clean_sub" "$clean_ses" "$root" "$t1_resolution" >> "${logs_pth}" 2>&1 || true
         continue
     else
         wait_for_open_slot
@@ -156,7 +190,7 @@ while IFS=, read -r sub ses; do
                     -N "${sub#sub-}_${ses}" \
                     -e "${logs_pth}" \
                     -o "${logs_pth}" \
-                    "$script" "$clean_sub" "$clean_ses"
+                    "$script" "$clean_sub" "$clean_ses" "${script_args[@]}"
             )
             echo "[INFO] qsub job ${job_id} submitted to ${hostname}"
         else
