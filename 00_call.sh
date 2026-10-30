@@ -2,13 +2,13 @@
 
 # in console define:
 # rawdata="/host/verges/tank/data/BIDS_MPN/rawdata/"
-# list_file="/host/verges/tank/data/daniel/99_varia/MPN_proc/MPN_29jun2026.txt"
+# list_file="/host/verges/tank/data/daniel/99_varia/MPN_proc/demo/MPN_29jun2026.txt"
 # script="/path/to/script/to/run/perSubSesPair.sh"
 # logdir="/host/verges/tank/data/daniel/99_varia/MPN_proc/logs"
 
 # usage:
 # bash 00_call.sh [--local] [--test] [--batch-size N] [--hostname XYZ] [--vmem <vmem>] [--threads <threads>] \
-#   --t1-resolution 0.5|0.7 \
+#   <processing step specific arguments: ex. --t1-resolution 0.5|0.7> \
 #   $rawdata $list_file $script $logdir
 
 set -e
@@ -121,15 +121,6 @@ while [ $# -gt 0 ]; do
 done
 
 # Validate inputs
-case "${t1_resolution}" in
-    0.5|0.7)
-        ;;
-    *)
-        echo "[ERROR] --t1-resolution must be 0.5 or 0.7." >&2
-        exit 1
-        ;;
-esac
-
 : "${rawdata:?missing rawdata directory}"
 : "${list_file:?missing participant-session list}"
 : "${script:?missing processing script}"
@@ -176,7 +167,7 @@ while IFS=, read -r sub ses; do
     echo "[INFO] ${sub} ${ses}"
 
     if [ "$local" -eq 1 ]; then
-        echo "[INFO] running locally: '$script' '$clean_sub' '$clean_ses' '${script_args[@]}'
+        echo "[INFO] running locally: '$script' '$clean_sub' '$clean_ses' '${script_args[@]}'"
         "$script" "$clean_sub" "$clean_ses" "$root" "$t1_resolution" >> "${logs_pth}" 2>&1 || true
         continue
     else
