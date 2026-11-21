@@ -113,7 +113,6 @@ post_struct_cmd=(
     -threads "${threads}"
     -sub "${sub}"
     -ses "${ses}"
-    "${run_flag[@]}"
     -post_structural
     -MPC -mpc_acq T1map -regSynth
     -microstructural_img "/bids/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm${run_suffix}_T1map.nii.gz"
