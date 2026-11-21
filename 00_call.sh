@@ -2,9 +2,9 @@
 
 # in console define:
 # rawdata="/host/verges/tank/data/BIDS_MPN/rawdata/"
+# logdir="/host/verges/tank/data/daniel/99_varia/MPN_proc/logs"
 # list_file="/host/verges/tank/data/daniel/99_varia/MPN_proc/demo/MPN_29jun2026.txt"
 # script="/path/to/script/to/run/perSubSesPair.sh"
-# logdir="/host/verges/tank/data/daniel/99_varia/MPN_proc/logs"
 
 # usage:
 # bash 00_call.sh [--local] [--test] [--batch-size N] [--hostname XYZ] [--vmem <vmem>] [--threads <threads>] \
@@ -168,7 +168,7 @@ while IFS=, read -r sub ses; do
 
     if [ "$local" -eq 1 ]; then
         echo "[INFO] running locally: '$script' '$clean_sub' '$clean_ses' '${script_args[@]}'"
-        "$script" "$clean_sub" "$clean_ses" "$root" "$t1_resolution" >> "${logs_pth}" 2>&1 || true
+        "$script" "$clean_sub" "$clean_ses" "$root" "${script_args[@]}" >> "${logs_pth}" 2>&1 || true
         continue
     else
         wait_for_open_slot
@@ -181,7 +181,7 @@ while IFS=, read -r sub ses; do
                     -N "${sub#sub-}_${ses}" \
                     -e "${logs_pth}" \
                     -o "${logs_pth}" \
-                    "$script" "$clean_sub" "$clean_ses" "${script_args[@]}"
+                    "$script" "$clean_sub" "$clean_ses" "$root" "${script_args[@]}"
             )
             echo "[INFO] qsub job ${job_id} submitted to ${hostname}"
         else
@@ -190,7 +190,7 @@ while IFS=, read -r sub ses; do
                     -N "${sub#sub-}_${ses}" \
                     -e "${logs_pth}" \
                     -o "${logs_pth}" \
-                    "$script" "$clean_sub" "$clean_ses"
+                    "$script" "$clean_sub" "$clean_ses" "$root" "${script_args[@]}"
             )
             echo "[INFO] qsub job ${job_id} submitted"
         fi
@@ -214,3 +214,4 @@ if [ "$local" -eq 0 ]; then
     wait_for_all_jobs
     echo "[INFO] $(date) all submitted jobs have exited qstat"
 fi
+

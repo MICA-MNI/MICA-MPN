@@ -16,5 +16,7 @@ mp/		  - micapipe processing scripts
 	03_procSurf.sh    - surface fitting on denoised T1w
 	04_scrubInf.sh    - run fastscrubber inference (automated surface QC)
 	05_postScrub.sh   - run micapipe post-structural on fastscrubber surfaces
+		NOTE. Run locally (fails with qsub jobs)
 hu/               - hippunfold processing scripts
 	01_hippunfold_pt.sh - run hippunfold segmentations on individuals
+		NOTE. Run locally (fails with qsub, often with insufficient memory allocation)

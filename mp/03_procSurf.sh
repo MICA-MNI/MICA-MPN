@@ -116,6 +116,7 @@ surf_cmd=(
     -ses "${ses}"
     -proc_surf
     -T1 /opt/T1.nii.gz
+    -force
 )
 
 echo "[INFO] Running command:" "${surf_cmd[@]}"

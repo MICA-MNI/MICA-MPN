@@ -19,9 +19,47 @@ ses=${2:?missing ses}
 sub="${sub#sub-}"
 ses="${ses#ses-}"
 
-bids_dir=${3:-/host/verges/tank/data/BIDS_MPN}
+shift 2
+
+bids_dir="/host/verges/tank/data/BIDS_MPN"
+run=""
+
+# Optional arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -run|--run)
+            run="${2:?missing value for -run}"
+            run="${run#run-}"
+            shift 2
+            ;;
+        -bids|--bids)
+            bids_dir="${2:?missing value for -bids}"
+            shift 2
+            ;;
+        *)
+            # Allow bids_dir as an optional positional argument
+            if [[ "$1" != -* && "$bids_dir" == "/host/verges/tank/data/BIDS_MPN" ]]; then
+                bids_dir="$1"
+                shift
+            else
+                echo "[ERROR] Unknown argument: $1"
+                exit 1
+            fi
+            ;;
+    esac
+done
+
 bids=$bids_dir/rawdata
 out=$bids_dir/derivatives
+
+# Run configuration
+run_suffix=""
+run_flag=()
+
+if [[ -n "$run" ]]; then
+    run_suffix="_run-${run}"
+    run_flag=(-run "$run")
+fi
 
 dir_fs="${out}/fastsurfer"
 threads=${threads:-10}
@@ -57,8 +95,10 @@ fi
 # --- p o s t    s t r u c t u r a l ---
 echo "[STEP] micapipe:post_structural, MPC, proc_flair,  ${sub}-${ses}"
 
-t1map_path="${bids}/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm_T1map.nii.gz"
+t1map_path="${bids}/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm${run_suffix}_T1map.nii.gz"
+
 echo "[INFO] t1map_path=$t1map_path"
+
 
 post_struct_cmd=(
     singularity run --writable-tmpfs --containall
@@ -73,9 +113,10 @@ post_struct_cmd=(
     -threads "${threads}"
     -sub "${sub}"
     -ses "${ses}"
+    "${run_flag[@]}"
     -post_structural
     -MPC -mpc_acq T1map -regSynth
-    -microstructural_img /bids/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm_T1map.nii.gz
+    -microstructural_img "/bids/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_acq-05mm${run_suffix}_T1map.nii.gz"
     -microstructural_reg FALSE
     -proc_flair
 )
