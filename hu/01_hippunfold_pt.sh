@@ -15,9 +15,13 @@ ses="${ses#ses-}"
 # Defaults
 bids_dir="/host/verges/tank/data/BIDS_MPN"
 hi_vers="1.5.1"
-hu_img="/data/mica1/01_programs/singularity/hippunfold_v${hi_vers}.sif"
+hu_img=""
 threads="all"
-out_density="0p5mm"
+out_density=""
+
+# Track explicitly supplied options
+hu_img_set=false
+density_set=false
 
 # Optional arguments
 shift 2
@@ -34,6 +38,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -hu_img|--hu_img)
             hu_img="${2:?missing value for -hu_img}"
+            hu_img_set=true
             shift 2
             ;;
         -threads|--threads)
@@ -42,6 +47,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -out_density|--out_density)
             out_density="${2:?missing value for -out_density}"
+            density_set=true
             shift 2
             ;;
         *)
@@ -51,15 +57,40 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Automatically set image if not explicitly provided
-if [[ "$hu_img" == "/data/mica1/01_programs/singularity/hippunfold_v1.5.1.sif" ]]; then
-    hu_img="/data/mica1/01_programs/singularity/hippunfold_v${hi_vers}.sif"
+# Determine major version (supports versions such as 2.0.0 or v2.0.0)
+version_clean="${hi_vers#v}"
+hi_major="${version_clean%%.*}"
+
+if [[ ! "$hi_major" =~ ^[0-9]+$ ]]; then
+    echo "[ERROR] Invalid HippUnfold version: $hi_vers"
+    exit 1
+fi
+
+if (( hi_major >= 2 )); then
+    is_v2=true
+else
+    is_v2=false
+fi
+
+# Set version-dependent defaults
+if [[ "$is_v2" == true ]]; then
+    default_density="8k"
+else
+    default_density="0p5mm"
+fi
+
+if [[ "$density_set" == false ]]; then
+    out_density="$default_density"
+fi
+
+if [[ "$hu_img_set" == false ]]; then
+    hu_img="/data/mica1/01_programs/singularity/hippunfold_v${version_clean}.sif"
 fi
 
 modality="T1w"
 
 # Output directory follows selected version
-out_dir="${bids_dir}/derivatives/hippunfold_v${hi_vers}"
+out_dir="${bids_dir}/derivatives/hippunfold_v${version_clean}"
 
 echo
 echo "[INFO] date=$(date)"
@@ -67,6 +98,7 @@ echo "[INFO] hostname=$(hostname)"
 echo "[INFO] user=$(whoami)"
 echo "[INFO] sub=$sub ses=$ses"
 echo "[INFO] HippUnfold version=$hi_vers"
+echo "[INFO] HippUnfold v2+ mode=$is_v2"
 echo "[INFO] hu_img=$hu_img"
 echo "[INFO] bids_dir=$bids_dir"
 echo "[INFO] out_dir=$out_dir"
@@ -75,9 +107,20 @@ echo "[INFO] out_density=$out_density"
 
 echo "[STEP] Running hippunfold for ${sub}"
 
+# Build Singularity command
 hu_cmd=(
     singularity run -e "${hu_img}"
-    "${bids_dir}" "${out_dir}" participant
+)
+
+# HippUnfold v2+ requires the explicit hippunfold command
+if [[ "$is_v2" == true ]]; then
+    hu_cmd+=(hippunfold)
+fi
+
+hu_cmd+=(
+    "${bids_dir}"
+    "${out_dir}"
+    participant
     --participant_label "${sub}"
     -p --cores "${threads}"
     --modality "${modality}"
@@ -86,7 +129,10 @@ hu_cmd=(
     --rerun-incomplete
 )
 
-echo "[INFO] Running command: ${hu_cmd[*]}"
+echo "[INFO] Running command:"
+printf ' %q' "${hu_cmd[@]}"
+echo
+
 "${hu_cmd[@]}"
 
 echo "[DONE] hippunfold completed for ${sub}"
